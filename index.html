@@ -647,6 +647,15 @@
             currentBillId: null,
             company: {}
         };
+        function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[m]));
+}
 
         window.onload = function() {
             loadCompanyProfile();
@@ -1029,7 +1038,7 @@ function updateColumnName(colId, newName) {
                 tr.innerHTML = `
                     <td class="p-2.5 text-center font-semibold text-slate-400">${idx + 1}</td>
                     <td class="p-2.5">
-                        <input type="text" value="${item.desc || ''}" placeholder="Enter item description..." onchange="updateItemDesc(${idx}, this.value)" class="w-full bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded px-1 py-0.5 font-medium text-slate-800 outline-none">
+                        <input type="text" value="${escapeHtml(item.desc || '')}" placeholder="Enter item description..." onchange="updateItemDesc(${idx}, this.value)" ...>
                     </td>
                     ${activeCols.map(c => `
                         <td class="p-2.5 text-center">
