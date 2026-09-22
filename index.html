@@ -999,11 +999,24 @@
             headRow.innerHTML = `
                 <th class="p-2.5 w-10 text-center">S.No</th>
                 <th class="p-2.5">Product / Service Description</th>
-                ${activeCols.map(c => `<th class="p-2.5 text-center w-35">${c.name} (${c.unit})</th>`).join('')}
+                ${activeCols.map(c => `
+    <th class="p-2.5 text-center w-32">
+        <input type="text" value="${c.name}" onchange="updateColumnName('${c.id}', this.value)" class="w-full text-center bg-transparent text-white placeholder-slate-300 outline-none focus:bg-white focus:text-slate-800 rounded px-1 font-semibold uppercase tracking-wider text-[11px]">
+        <span class="text-[10px] text-slate-300">(${c.unit})</span>
+    </th>
+`).join('')}
                 <th class="p-2.5 text-right w-28">Cost (₹)</th>
                 <th class="p-2.5 w-8 no-print"></th>
             `;
-
+function updateColumnName(colId, newName) {
+    const col = state.columns.find(c => c.id === colId);
+    if (col && newName.trim()) {
+        col.name = newName.trim();
+        localStorage.setItem('billcraft_columns', JSON.stringify(state.columns));
+        renderActiveColumnsList();
+        renderInvoicePreview();
+    }
+}
             // Table Rows
             const tbody = document.getElementById('preview-table-body');
             tbody.innerHTML = '';
