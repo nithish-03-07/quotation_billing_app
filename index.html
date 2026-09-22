@@ -142,7 +142,7 @@
 
         <!-- Sidebar Footer -->
         <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
-            <p>BillCraft v2.4 • Offline Ready</p>
+            <p>BillCraft v2.5 • Offline Ready</p>
             <p class="mt-1">All data saved locally</p>
         </div>
     </aside>
@@ -615,6 +615,24 @@
             { id: 'litre', name: 'Litre', unit: 'L', active: false, rate: 50 },
             { id: 'quantity', name: 'Quantity', unit: 'pcs', active: true, rate: 1 }
         ];
+
+        // Central html2pdf options - reused by every PDF-producing function.
+        // ignoreElements skips anything marked .no-print (buttons, delete icons, etc.)
+        // so they never get baked into the PDF capture, even though the CSS
+        // @media print rule alone doesn't apply to html2canvas' screen-mode render.
+        function getPdfOptions(billNo) {
+            return {
+                margin:       0.2,
+                filename:     `${billNo}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  {
+                    scale: 2,
+                    useCORS: true,
+                    ignoreElements: (el) => el.classList && el.classList.contains('no-print')
+                },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+        }
 
         let state = {
             columns: [],
@@ -1106,43 +1124,77 @@
             renderHistoryTable();
         }
 
-        function generatePDF() {
+        // Generates the PDF. Pass returnBlob=true to get the PDF back as a Blob
+        // (used for WhatsApp file sharing) instead of triggering a direct download.
+        function generatePDF(returnBlob = false) {
             saveCurrentBill();
             const element = document.getElementById('invoice-preview-container');
             const billNo = document.getElementById('bill-no').value || 'Bill';
+            const opt = getPdfOptions(billNo);
 
-            const opt = {
-                margin:       0.2,
-                filename:     `${billNo}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
+            if (returnBlob) {
+                return html2pdf().set(opt).from(element).outputPdf('blob');
+            }
 
             showToast("Generating PDF download...");
-            html2pdf().set(opt).from(element).save();
+            return html2pdf().set(opt).from(element).save();
         }
 
-        function shareWhatsApp() {
-            saveCurrentBill();
+        // Shares the actual generated PDF file via the device's native share sheet
+        // (so the user can pick WhatsApp and send the file itself, not just text).
+        // Falls back to downloading the PDF + opening a pre-filled WhatsApp chat
+        // on browsers/devices that don't support sharing files (mostly desktop).
+        async function shareWhatsApp() {
             const custName = document.getElementById('cust-name').value || 'Customer';
             const billNo = document.getElementById('bill-no').value;
             const docType = document.getElementById('doc-type').value;
-            const total = document.getElementById('prev-grand-total').innerText;
             const phone = document.getElementById('cust-phone').value.replace(/[^0-9]/g, '');
 
-            const message = `Hello ${custName},\n\nPlease find your ${docType} *#${billNo}* details below:\n*Total Amount:* ${total}\n\nThank you for choosing ${state.company.name || 'us'}!`;
+            showToast("Preparing your bill to share...");
 
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = phone 
-                ? `https://wa.me/${phone}?text=${encodedMessage}`
-                : `https://wa.me/?text=${encodedMessage}`;
+            try {
+                const pdfBlob = await generatePDF(true);
+                const total = document.getElementById('prev-grand-total').innerText;
+                const message = `Hello ${custName},\n\nPlease find your ${docType} *#${billNo}* attached.\n*Total Amount:* ${total}\n\nThank you for choosing ${state.company.name || 'us'}!`;
+                const file = new File([pdfBlob], `${billNo}.pdf`, { type: 'application/pdf' });
 
-            // Generate PDF first, then trigger link
-            generatePDF();
-            setTimeout(() => {
-                window.open(whatsappUrl, '_blank');
-            }, 1000);
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    // Native share sheet - user picks WhatsApp and the PDF goes with it
+                    await navigator.share({
+                        files: [file],
+                        title: `${docType} #${billNo}`,
+                        text: message
+                    });
+                    showToast("Bill shared successfully!");
+                } else {
+                    // No file-sharing support (typical on desktop browsers) - download
+                    // the PDF so the user has it, then open WhatsApp with the message
+                    // pre-filled so they just need to attach the downloaded file.
+                    const url = URL.createObjectURL(pdfBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${billNo}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    const encodedMessage = encodeURIComponent(message + "\n\n(PDF downloaded to your device - please attach it in WhatsApp)");
+                    const whatsappUrl = phone
+                        ? `https://wa.me/${phone}?text=${encodedMessage}`
+                        : `https://wa.me/?text=${encodedMessage}`;
+
+                    setTimeout(() => window.open(whatsappUrl, '_blank'), 600);
+                    showToast("PDF downloaded - attach it manually in WhatsApp (your browser can't auto-attach files).");
+                }
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    // User cancelled the share sheet - not an error worth showing
+                    return;
+                }
+                console.error(err);
+                showToast("Could not share the bill. Try Download PDF instead.", true);
+            }
         }
 
         function renderHistoryTable() {
