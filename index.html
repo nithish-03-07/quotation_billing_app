@@ -1237,25 +1237,31 @@ function updateItemCostOverride(tableIndex, itemIndex, val) {
         // exactly one page, and only spills onto more pages if the rows
         // genuinely don't fit on one.
         async function generatePDF(returnBlob = false) {
-            saveCurrentBill();
-            const element = document.getElementById('invoice-preview-container');
-            const billNo = document.getElementById('bill-no').value || 'Bill';
-            const opt = getPdfOptions(billNo);
+    saveCurrentBill();
+    const element = document.getElementById('invoice-preview-container');
+    const billNo = document.getElementById('bill-no').value || 'Bill';
+    const opt = getPdfOptions(billNo);
 
-            const originalMinHeight = element.style.minHeight;
-            element.style.minHeight = '0';
+    const originalMinHeight = element.style.minHeight;
+    element.style.minHeight = '0';
 
-            try {
-                if (returnBlob) {
-                    return await html2pdf().set(opt).from(element).outputPdf('blob');
-                }
-                showToast("Generating PDF download...");
-                return await html2pdf().set(opt).from(element).save();
-            } finally {
-                element.style.minHeight = originalMinHeight;
-            }
+    // Measure actual content height and build a custom page size
+    // exactly that tall, so nothing splits or pushes to a 2nd page.
+    const widthIn = 8.27; // A4 width in inches
+    const contentHeightIn = (element.scrollHeight / 96) + 0.4; // +buffer for margins
+    opt.jsPDF.format = [widthIn, contentHeightIn];
+    delete opt.pagebreak; // no page breaks needed on a single long page
+
+    try {
+        if (returnBlob) {
+            return await html2pdf().set(opt).from(element).outputPdf('blob');
         }
-
+        showToast("Generating PDF download...");
+        return await html2pdf().set(opt).from(element).save();
+    } finally {
+        element.style.minHeight = originalMinHeight;
+    }
+}
         // Shares the actual generated PDF file via the device's native share sheet
         // (so the user can pick WhatsApp and send the file itself, not just text).
         // Falls back to downloading the PDF + opening a pre-filled WhatsApp chat
