@@ -45,7 +45,7 @@
             .no-print {
                 display: none !important;
             }
-            .print-only {
+            .print-only { 
                 display: block !important;
             }
             body {
@@ -1008,9 +1008,9 @@
             headRow.innerHTML = `
                 <th class="p-2.5 w-10 text-center">S.No</th>
                 <th class="p-2.5">Product / Service Description</th>
-                ${activeCols.map(c => `
+              ${activeCols.map(c => `
     <th class="p-2.5 text-center w-32">
-        <input type="text" value="${c.name}" onchange="updateColumnName('${c.id}', this.value)" class="w-full text-center bg-transparent text-white placeholder-slate-300 outline-none focus:bg-white focus:text-slate-800 rounded px-1 font-semibold uppercase tracking-wider text-[11px]">
+        <input type="text" value="${escapeHtml(c.name)}" onchange="updateColumnName('${c.id}', this.value)" style="letter-spacing:normal;" class="w-full text-center bg-transparent text-white placeholder-slate-300 outline-none focus:bg-white focus:text-slate-800 rounded px-1 font-semibold uppercase text-[11px]">
         <span class="text-[10px] text-slate-300">(${c.unit})</span>
     </th>
 `).join('')}
