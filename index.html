@@ -1080,19 +1080,21 @@ function updateItemCostOverride(tableIndex, itemIndex, val) {
             `;
         }).join('');
 
-        const headCols = `
-            <th class="p-2.5 w-10 text-center">S.No</th>
-            <th class="p-2.5">Product / Service Description</th>
-            ${activeCols.map(c => `
-                <th class="p-2.5 text-center w-32">
-                    <input type="text" value="${escapeHtml(c.name)}" onchange="updateColumnName('${c.id}', this.value)" style="letter-spacing:normal;" class="w-full text-center bg-transparent text-white placeholder-slate-300 outline-none focus:bg-white focus:text-slate-800 rounded px-1 font-semibold uppercase text-[11px]">
-                    <span class="text-[10px] text-slate-300">(${c.unit})</span>
-                </th>
-            `).join('')}
-            <th class="p-2.5 text-right w-28">Cost (₹)</th>
-            <th class="p-2.5 w-8 no-print"></th>
-        `;
+       const numCols = activeCols.length;
+const colWidthPct = numCols > 0 ? (40 / numCols) : 0; // measurement columns share 40% of the table total
 
+const headCols = `
+    <th class="p-2.5 text-center" style="width:5%;">S.No</th>
+    <th class="p-2.5" style="width:35%;">Product / Service Description</th>
+    ${activeCols.map(c => `
+        <th class="p-2.5 text-center" style="width:${colWidthPct}%;">
+            <input type="text" value="${escapeHtml(c.name)}" onchange="updateColumnName('${c.id}', this.value)" style="letter-spacing:normal;" class="w-full text-center bg-transparent text-white placeholder-slate-300 outline-none focus:bg-white focus:text-slate-800 rounded px-1 font-semibold uppercase text-[11px]">
+            <span class="text-[10px] text-slate-300">(${c.unit})</span>
+        </th>
+    `).join('')}
+    <th class="p-2.5 text-right" style="width:15%;">Cost (₹)</th>
+    <th class="p-2.5 no-print" style="width:5%;"></th>
+`;
         const tableBlock = document.createElement('div');
         tableBlock.innerHTML = `
             <div class="flex items-center justify-between mb-2">
