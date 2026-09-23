@@ -628,7 +628,7 @@
                     ignoreElements: (el) => el.classList && el.classList.contains('no-print')
                 },
                 jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                       pagebreak:    { mode: ['css', 'legacy'], avoid: 'tr' }
             };
         }
 
@@ -1099,8 +1099,8 @@ function updateItemCostOverride(tableIndex, itemIndex, val) {
                 <input type="text" value="${escapeHtml(table.name)}" onchange="updateTableName(${tIdx}, this.value)" class="font-bold text-slate-700 text-sm bg-transparent outline-none focus:bg-slate-50 rounded px-1 py-0.5">
                 ${state.tables.length > 1 ? `<button onclick="deleteTable(${tIdx})" class="no-print text-xs text-rose-500 hover:text-rose-700 font-semibold"><i class="fa-solid fa-trash-can me-1"></i>Remove Table</button>` : ''}
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+            <div class="overflow-x-visible">
+    <table class="w-full text-left border-collapse" style="table-layout: fixed;">
                     <thead>
                         <tr class="bg-slate-800 text-white text-[11px] uppercase tracking-wider">${headCols}</tr>
                     </thead>
