@@ -622,12 +622,15 @@
                 margin:       0.15,
                 filename:     `${billNo}.pdf`,
                 image:        { type: 'jpeg', quality: 1 },
-                html2canvas:  {
-                    scale: 3,
-                    useCORS: true,
-                    ignoreElements: (el) => el.classList && el.classList.contains('no-print')
-                },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
+                       html2canvas:  {
+            scale: 3,
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: document.documentElement.scrollWidth,
+            ignoreElements: (el) => el.classList && el.classList.contains('no-print')
+            },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
                        pagebreak:    { mode: ['css', 'legacy'], avoid: 'tr' }
             };
         }
