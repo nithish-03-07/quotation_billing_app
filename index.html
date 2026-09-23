@@ -619,7 +619,7 @@
         // @media print rule alone doesn't apply to html2canvas' screen-mode render.
         function getPdfOptions(billNo) {
             return {
-                margin:       0.15,
+                margin:       0,
                 filename:     `${billNo}.pdf`,
                 image:        { type: 'jpeg', quality: 1 },
                        html2canvas:  {
@@ -1252,9 +1252,8 @@ const headCols = `
 
     // Measure actual content height and build a custom page size
     // exactly that tall, so nothing splits or pushes to a 2nd page.
-        const marginIn = opt.margin; // 0.15in, applied top+bottom = 0.3 total
-    const widthIn = 8.27; // A4 width in inches
-    const contentHeightIn = (element.scrollHeight / 96) + (marginIn * 2) + 0.6; // extra safety buffer
+            const widthIn = 8.27; // A4 width in inches
+    const contentHeightIn = (element.scrollHeight / 96) + 0.3; // small safety buffer only
     opt.jsPDF.format = [widthIn, contentHeightIn];
     delete opt.pagebreak; // no page breaks needed on a single long page
     try {
