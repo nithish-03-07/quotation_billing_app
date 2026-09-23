@@ -456,27 +456,18 @@
                             </div>
 
                             <!-- Editable Live Billing Table -->
-                            <div class="overflow-x-auto mb-6">
-                                <table class="w-full text-left border-collapse" id="preview-items-table">
-                                    <thead>
-                                        <tr class="bg-slate-800 text-white text-[11px] uppercase tracking-wider" id="preview-table-head">
-                                            <!-- Dynamically injected table headers -->
-                                        </tr>
-                                    </thead>
-                                    <tbody id="preview-table-body" class="divide-y divide-slate-200">
-                                        <!-- Dynamically injected row items -->
-                                    </tbody>
-                                </table>
-                            </div>
+                           <!-- Editable Live Billing Tables (one or more) -->
+<div id="tables-container" class="space-y-8 mb-6">
+    <!-- Each table block is injected here by JS -->
+</div>
 
-                            <!-- Add Row Interactive Button inside live view -->
-                            <div class="no-print mb-6">
-                                <button onclick="addNewRow()" class="w-full py-2.5 border-2 border-dashed border-indigo-200 hover:border-indigo-500 text-indigo-600 hover:bg-indigo-50 rounded-xl font-semibold transition flex items-center justify-center space-x-2">
-                                    <i class="fa-solid fa-plus text-xs"></i>
-                                    <span>Add Product or Service Item</span>
-                                </button>
-                            </div>
-
+<!-- Add New Table Button -->
+<div class="no-print mb-6">
+    <button onclick="addNewTable()" class="w-full py-2.5 border-2 border-dashed border-slate-300 hover:border-slate-500 text-slate-600 hover:bg-slate-50 rounded-xl font-semibold transition flex items-center justify-center space-x-2">
+        <i class="fa-solid fa-table"></i>
+        <span>Add New Table</span>
+    </button>
+</div>
                             <!-- Summary & Grand Total Section -->
                             <div class="flex justify-end mb-8">
                                 <div class="w-full sm:w-64 space-y-2 text-xs">
@@ -641,12 +632,12 @@
             };
         }
 
-        let state = {
+            let state = {
             columns: [],
-            items: [],
+            tables: [],   // each table = { id, name, items: [] }
             currentBillId: null,
             company: {}
-        };
+            };
         function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, m => ({
         '&': '&amp;',
@@ -857,26 +848,59 @@
         }
 
         function initDefaultBill() {
-            state.currentBillId = null;
-            document.getElementById('editor-title').innerText = "New Invoice";
-            document.getElementById('bill-no').value = "QTN-" + Math.floor(100000 + Math.random() * 900000);
-            document.getElementById('bill-date').value = new Date().toISOString().split('T')[0];
-            document.getElementById('doc-type').value = "Quotation";
-            document.getElementById('bill-status').value = "None";
-            
-            document.getElementById('cust-name').value = "";
-            document.getElementById('cust-phone').value = "";
-            document.getElementById('cust-address').value = "";
-            document.getElementById('cust-gst').value = "";
+    state.currentBillId = null;
+    document.getElementById('editor-title').innerText = "New Invoice";
+    document.getElementById('bill-no').value = "QTN-" + Math.floor(100000 + Math.random() * 900000);
+    document.getElementById('bill-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('doc-type').value = "Quotation";
+    document.getElementById('bill-status').value = "None";
 
-            state.items = [
+    document.getElementById('cust-name').value = "";
+    document.getElementById('cust-phone').value = "";
+    document.getElementById('cust-address').value = "";
+    document.getElementById('cust-gst').value = "";
+
+    state.tables = [
+        {
+            id: Date.now(),
+            name: "Table 1",
+            items: [
                 { id: Date.now(), desc: "Interior Wooden Flooring", values: { sqft: 150 }, manualCost: null },
                 { id: Date.now() + 1, desc: "Architectural Consultation", values: { quantity: 1 }, manualCost: 5000 }
-            ];
-
-            updateDocumentType();
-            renderInvoicePreview();
+            ]
         }
+    ];
+
+    updateDocumentType();
+    renderInvoicePreview();
+}
+    function initDefaultBill() {
+    state.currentBillId = null;
+    document.getElementById('editor-title').innerText = "New Invoice";
+    document.getElementById('bill-no').value = "QTN-" + Math.floor(100000 + Math.random() * 900000);
+    document.getElementById('bill-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('doc-type').value = "Quotation";
+    document.getElementById('bill-status').value = "None";
+
+    document.getElementById('cust-name').value = "";
+    document.getElementById('cust-phone').value = "";
+    document.getElementById('cust-address').value = "";
+    document.getElementById('cust-gst').value = "";
+
+    state.tables = [
+        {
+            id: Date.now(),
+            name: "Table 1",
+            items: [
+                { id: Date.now(), desc: "Interior Wooden Flooring", values: { sqft: 150 }, manualCost: null },
+                { id: Date.now() + 1, desc: "Architectural Consultation", values: { quantity: 1 }, manualCost: 5000 }
+            ]
+        }
+    ];
+
+    updateDocumentType();
+    renderInvoicePreview();
+}
 
         function updateDocumentType() {
             const type = document.getElementById('doc-type').value;
@@ -884,49 +908,70 @@
             document.getElementById('prev-doc-title').innerText = type.toUpperCase();
         }
 
-        function addNewRow() {
-            state.items.push({
-                id: Date.now(),
-                desc: "",
-                values: {},
-                manualCost: null
-            });
-            renderInvoicePreview();
-        }
+        function addNewRow(tableIndex) {
+    state.tables[tableIndex].items.push({ id: Date.now(), desc: "", values: {}, manualCost: null });
+    renderInvoicePreview();
+}
 
-        function deleteRow(index) {
-            if (state.items.length <= 1) {
-                showToast("At least one row item is required", true);
-                return;
-            }
-            state.items.splice(index, 1);
-            renderInvoicePreview();
-        }
+function deleteRow(tableIndex, itemIndex) {
+    const table = state.tables[tableIndex];
+    if (table.items.length <= 1) {
+        showToast("Each table needs at least one row item", true);
+        return;
+    }
+    table.items.splice(itemIndex, 1);
+    renderInvoicePreview();
+}
 
-        function updateItemDesc(index, val) {
-            state.items[index].desc = val;
-        }
+function addNewTable() {
+    state.tables.push({
+        id: Date.now(),
+        name: "Table " + (state.tables.length + 1),
+        items: [{ id: Date.now(), desc: "", values: {}, manualCost: null }]
+    });
+    renderInvoicePreview();
+    showToast("New table added");
+}
 
-       function updateItemVal(index, colId, val) {
-    state.items[index].values[colId] = val;
-            
-            // Auto recalculate cost if not manually overridden
-            if (state.items[index].manualCost === null) {
-                calculateRowCost(state.items[index]);
-            }
-            renderInvoicePreview();
-        }
+function deleteTable(tableIndex) {
+    if (state.tables.length <= 1) {
+        showToast("At least one table is required", true);
+        return;
+    }
+    state.tables.splice(tableIndex, 1);
+    renderInvoicePreview();
+    showToast("Table removed");
+}
 
-        function updateItemCostOverride(index, val) {
-            if (val === "" || val === null) {
-                state.items[index].manualCost = null;
-                calculateRowCost(state.items[index]);
-            } else {
-                state.items[index].manualCost = parseFloat(val) || 0;
-            }
-            calculateAndUpdateTotals();
-        }
+function updateTableName(tableIndex, newName) {
+    if (newName.trim()) {
+        state.tables[tableIndex].name = newName.trim();
+        renderInvoicePreview();
+    }
+}
+        function updateItemDesc(tableIndex, itemIndex, val) {
+    state.tables[tableIndex].items[itemIndex].desc = val;
+}
 
+function updateItemVal(tableIndex, itemIndex, colId, val) {
+    const item = state.tables[tableIndex].items[itemIndex];
+    item.values[colId] = val;
+    if (item.manualCost === null) {
+        calculateRowCost(item);
+    }
+    renderInvoicePreview();
+}
+
+function updateItemCostOverride(tableIndex, itemIndex, val) {
+    const item = state.tables[tableIndex].items[itemIndex];
+    if (val === "" || val === null) {
+        item.manualCost = null;
+        calculateRowCost(item);
+    } else {
+        item.manualCost = parseFloat(val) || 0;
+    }
+    calculateAndUpdateTotals();
+}
         function calculateRowCost(item) {
             let autoCost = 0;
             const activeCols = state.columns.filter(c => c.active);
@@ -940,13 +985,14 @@
         }
 
         function recalculateAllRows() {
-            state.items.forEach(item => {
-                if (item.manualCost === null) {
-                    calculateRowCost(item);
-                }
-            });
-        }
-
+    state.tables.forEach(table => {
+        table.items.forEach(item => {
+            if (item.manualCost === null) {
+                calculateRowCost(item);
+            }
+        });
+    });
+}
         function renderInvoicePreview() {
             // Render Company Info
             document.getElementById('prev-company-name').innerText = state.company.name || "YOUR COMPANY NAME";
@@ -1002,70 +1048,92 @@
             document.getElementById('prev-upi-id').innerText = state.company.upi ? `UPI: ${state.company.upi}` : "";
             document.getElementById('prev-bank-info').innerText = state.company.bank || "";
 
-            // Dynamic Columns Headers
-            const activeCols = state.columns.filter(c => c.active);
-            const headRow = document.getElementById('preview-table-head');
-            headRow.innerHTML = `
-                <th class="p-2.5 w-10 text-center">S.No</th>
-                <th class="p-2.5">Product / Service Description</th>
-              ${activeCols.map(c => `
-    <th class="p-2.5 text-center w-32">
-        <input type="text" value="${escapeHtml(c.name)}" onchange="updateColumnName('${c.id}', this.value)" style="letter-spacing:normal;" class="w-full text-center bg-transparent text-white placeholder-slate-300 outline-none focus:bg-white focus:text-slate-800 rounded px-1 font-semibold uppercase text-[11px]">
-        <span class="text-[10px] text-slate-300">(${c.unit})</span>
-    </th>
-`).join('')}
-                <th class="p-2.5 text-right w-28">Cost (₹)</th>
-                <th class="p-2.5 w-8 no-print"></th>
-            `;
-function updateColumnName(colId, newName) {
-    const col = state.columns.find(c => c.id === colId);
-    if (col && newName.trim()) {
-        col.name = newName.trim();
-        localStorage.setItem('billcraft_columns', JSON.stringify(state.columns));
-        renderActiveColumnsList();
-        renderInvoicePreview();
-    }
-}
-            // Table Rows
-            const tbody = document.getElementById('preview-table-body');
-            tbody.innerHTML = '';
+               // Dynamic Tables (with per-table subtotal)
+    const activeCols = state.columns.filter(c => c.active);
+    const container = document.getElementById('tables-container');
+    container.innerHTML = '';
 
-            state.items.forEach((item, idx) => {
-                const computedCost = item.manualCost !== null ? item.manualCost : calculateRowCost(item);
+    state.tables.forEach((table, tIdx) => {
+        let tableSubtotal = 0;
 
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50/50 transition";
-                tr.innerHTML = `
-                    <td class="p-2.5 text-center font-semibold text-slate-400">${idx + 1}</td>
+        const rowsHtml = table.items.map((item, iIdx) => {
+            const computedCost = item.manualCost !== null ? item.manualCost : calculateRowCost(item);
+            tableSubtotal += computedCost;
+            return `
+                <tr class="hover:bg-slate-50/50 transition">
+                    <td class="p-2.5 text-center font-semibold text-slate-400">${iIdx + 1}</td>
                     <td class="p-2.5">
-                        <input type="text" value="${escapeHtml(item.desc || '')}" placeholder="Enter item description..." onchange="updateItemDesc(${idx}, this.value)" ...>
+                        <input type="text" value="${escapeHtml(item.desc || '')}" placeholder="Enter item description..." title="${escapeHtml(item.desc || '')}" onchange="updateItemDesc(${tIdx}, ${iIdx}, this.value)" class="w-full bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded px-1 py-0.5 font-medium text-slate-800 outline-none">
                     </td>
-                   ${activeCols.map(c => `
-    <td class="p-2.5 text-center">
-        <input type="text" value="${escapeHtml(item.values[c.id] || '')}" placeholder="0" title="${escapeHtml(item.values[c.id] || '')}" onchange="updateItemVal(${idx}, '${c.id}', this.value)" class="w-full text-center bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded px-1 py-0.5 outline-none font-medium">
-    </td>
-`).join('')}
+                    ${activeCols.map(c => `
+                        <td class="p-2.5 text-center">
+                            <input type="text" value="${escapeHtml(item.values[c.id] || '')}" placeholder="0" title="${escapeHtml(item.values[c.id] || '')}" onchange="updateItemVal(${tIdx}, ${iIdx}, '${c.id}', this.value)" class="w-full text-center bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded px-1 py-0.5 outline-none font-medium">
+                        </td>
+                    `).join('')}
                     <td class="p-2.5 text-right">
-                        <input type="number" min="0" value="${computedCost}" onchange="updateItemCostOverride(${idx}, this.value)" class="w-full text-right bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded px-1 py-0.5 font-bold text-slate-900 outline-none">
+                        <input type="number" min="0" value="${computedCost}" onchange="updateItemCostOverride(${tIdx}, ${iIdx}, this.value)" class="w-full text-right bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded px-1 py-0.5 font-bold text-slate-900 outline-none">
                     </td>
                     <td class="p-2.5 text-center no-print">
-                        <button onclick="deleteRow(${idx})" class="text-slate-300 hover:text-rose-500 transition"><i class="fa-solid fa-xmark"></i></button>
+                        <button onclick="deleteRow(${tIdx}, ${iIdx})" class="text-slate-300 hover:text-rose-500 transition"><i class="fa-solid fa-xmark"></i></button>
                     </td>
-                `;
-                tbody.appendChild(tr);
-            });
+                </tr>
+            `;
+        }).join('');
 
+        const headCols = `
+            <th class="p-2.5 w-10 text-center">S.No</th>
+            <th class="p-2.5">Product / Service Description</th>
+            ${activeCols.map(c => `
+                <th class="p-2.5 text-center w-32">
+                    <input type="text" value="${escapeHtml(c.name)}" onchange="updateColumnName('${c.id}', this.value)" style="letter-spacing:normal;" class="w-full text-center bg-transparent text-white placeholder-slate-300 outline-none focus:bg-white focus:text-slate-800 rounded px-1 font-semibold uppercase text-[11px]">
+                    <span class="text-[10px] text-slate-300">(${c.unit})</span>
+                </th>
+            `).join('')}
+            <th class="p-2.5 text-right w-28">Cost (₹)</th>
+            <th class="p-2.5 w-8 no-print"></th>
+        `;
+
+        const tableBlock = document.createElement('div');
+        tableBlock.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <input type="text" value="${escapeHtml(table.name)}" onchange="updateTableName(${tIdx}, this.value)" class="font-bold text-slate-700 text-sm bg-transparent outline-none focus:bg-slate-50 rounded px-1 py-0.5">
+                ${state.tables.length > 1 ? `<button onclick="deleteTable(${tIdx})" class="no-print text-xs text-rose-500 hover:text-rose-700 font-semibold"><i class="fa-solid fa-trash-can me-1"></i>Remove Table</button>` : ''}
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800 text-white text-[11px] uppercase tracking-wider">${headCols}</tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">${rowsHtml}</tbody>
+                </table>
+            </div>
+            <div class="no-print mt-3 mb-2">
+                <button onclick="addNewRow(${tIdx})" class="w-full py-2 border-2 border-dashed border-indigo-200 hover:border-indigo-500 text-indigo-600 hover:bg-indigo-50 rounded-xl font-semibold transition flex items-center justify-center space-x-2 text-xs">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Add Item to ${escapeHtml(table.name)}</span>
+                </button>
+            </div>
+            <div class="flex justify-end">
+                <div class="w-full sm:w-64 flex justify-between text-xs font-semibold text-slate-600 border-t border-slate-200 pt-2">
+                    <span>Subtotal (${escapeHtml(table.name)}):</span>
+                    <span>₹${tableSubtotal.toFixed(2)}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(tableBlock);
+    });
             calculateAndUpdateTotals();
         }
 
         function calculateAndUpdateTotals() {
-            let subtotal = 0;
+    let subtotal = 0;
 
-            state.items.forEach(item => {
-                const cost = item.manualCost !== null ? item.manualCost : calculateRowCost(item);
-                subtotal += cost;
-            });
-
+    state.tables.forEach(table => {
+        table.items.forEach(item => {
+            const cost = item.manualCost !== null ? item.manualCost : calculateRowCost(item);
+            subtotal += cost;
+        });
+    });
             const taxRate = parseFloat(document.getElementById('tax-rate').value) || 0;
             const discountRate = parseFloat(document.getElementById('discount-rate').value) || 0;
             const extraFee = parseFloat(document.getElementById('extra-fee').value) || 0;
@@ -1107,38 +1175,39 @@ function updateColumnName(colId, newName) {
         }
 
         function getBillPayload() {
-            let subtotal = 0;
-            state.items.forEach(item => {
-                subtotal += item.manualCost !== null ? item.manualCost : calculateRowCost(item);
-            });
+    let subtotal = 0;
+    state.tables.forEach(table => {
+        table.items.forEach(item => {
+            subtotal += item.manualCost !== null ? item.manualCost : calculateRowCost(item);
+        });
+    });
 
-            const taxRate = parseFloat(document.getElementById('tax-rate').value) || 0;
-            const discountRate = parseFloat(document.getElementById('discount-rate').value) || 0;
-            const extraFee = parseFloat(document.getElementById('extra-fee').value) || 0;
+    const taxRate = parseFloat(document.getElementById('tax-rate').value) || 0;
+    const discountRate = parseFloat(document.getElementById('discount-rate').value) || 0;
+    const extraFee = parseFloat(document.getElementById('extra-fee').value) || 0;
 
-            const discountVal = (subtotal * discountRate) / 100;
-            const taxVal = ((subtotal - discountVal) * taxRate) / 100;
-            const grandTotal = (subtotal - discountVal) + taxVal + extraFee;
+    const discountVal = (subtotal * discountRate) / 100;
+    const taxVal = ((subtotal - discountVal) * taxRate) / 100;
+    const grandTotal = (subtotal - discountVal) + taxVal + extraFee;
 
-            return {
-                id: state.currentBillId || ('bill_' + Date.now()),
-                billNo: document.getElementById('bill-no').value,
-                docType: document.getElementById('doc-type').value,
-                date: document.getElementById('bill-date').value,
-                status: document.getElementById('bill-status').value,
-                customer: {
-                    name: document.getElementById('cust-name').value,
-                    phone: document.getElementById('cust-phone').value,
-                    address: document.getElementById('cust-address').value,
-                    gst: document.getElementById('cust-gst').value
-                },
-                items: state.items,
-                columns: state.columns,
-                taxRate, discountRate, extraFee,
-                grandTotal
-            };
-        }
-
+    return {
+        id: state.currentBillId || ('bill_' + Date.now()),
+        billNo: document.getElementById('bill-no').value,
+        docType: document.getElementById('doc-type').value,
+        date: document.getElementById('bill-date').value,
+        status: document.getElementById('bill-status').value,
+        customer: {
+            name: document.getElementById('cust-name').value,
+            phone: document.getElementById('cust-phone').value,
+            address: document.getElementById('cust-address').value,
+            gst: document.getElementById('cust-gst').value
+        },
+        tables: state.tables,
+        columns: state.columns,
+        taxRate, discountRate, extraFee,
+        grandTotal
+    };
+}
         function saveCurrentBill() {
             const bill = getBillPayload();
             let history = JSON.parse(localStorage.getItem('billcraft_history') || '[]');
@@ -1301,7 +1370,7 @@ function updateColumnName(colId, newName) {
             if (!bill) return;
 
             state.currentBillId = bill.id;
-            state.items = bill.items || [];
+            state.tables = bill.tables || [{ id: Date.now(), name: "Table 1", items: bill.items || [] }];
             
             document.getElementById('editor-title').innerText = "Edit Invoice #" + bill.billNo;
             document.getElementById('bill-no').value = bill.billNo;
