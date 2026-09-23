@@ -2,7 +2,7 @@
 <html lang="en" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BillCraft - Quotation & Billing Web App</title>
     
     <!-- Tailwind CSS -->
@@ -627,7 +627,7 @@
             useCORS: true,
             scrollX: 0,
             scrollY: 0,
-           
+            windowWidth: document.documentElement.scrollWidth,
             ignoreElements: (el) => el.classList && el.classList.contains('no-print')
             },
             jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
@@ -1241,36 +1241,21 @@ const headCols = `
         // the sheet shrink-wrap to its actual content height - the PDF then uses
         // exactly one page, and only spills onto more pages if the rows
         // genuinely don't fit on one.
-       async function generatePDF(returnBlob = false) {
+        async function generatePDF(returnBlob = false) {
     saveCurrentBill();
     const element = document.getElementById('invoice-preview-container');
     const billNo = document.getElementById('bill-no').value || 'Bill';
     const opt = getPdfOptions(billNo);
 
-    const widthIn = 8.27; // A4 width in inches
+    const originalMinHeight = element.style.minHeight;
+    element.style.minHeight = '0';
+
+    // Measure actual content height and build a custom page size
+    // exactly that tall, so nothing splits or pushes to a 2nd page.
+            const widthIn = 8.27; // A4 width in inches
     const contentHeightIn = (element.scrollHeight / 96) + 0.3; // small safety buffer only
     opt.jsPDF.format = [widthIn, contentHeightIn];
     delete opt.pagebreak; // no page breaks needed on a single long page
-
-    // Pin the element to the exact top-left of the viewport so nothing
-    // around it (sidebar, scroll position, centering) can shift the capture.
-    const original = {
-        minHeight: element.style.minHeight,
-        position: element.style.position,
-        top: element.style.top,
-        left: element.style.left,
-        margin: element.style.margin,
-        zIndex: element.style.zIndex
-    };
-
-    element.style.minHeight = '0';
-    element.style.position = 'fixed';
-    element.style.top = '0';
-    element.style.left = '0';
-    element.style.margin = '0';
-    element.style.zIndex = '99999';
-    window.scrollTo(0, 0);
-
     try {
         if (returnBlob) {
             return await html2pdf().set(opt).from(element).outputPdf('blob');
@@ -1278,12 +1263,7 @@ const headCols = `
         showToast("Generating PDF download...");
         return await html2pdf().set(opt).from(element).save();
     } finally {
-        element.style.minHeight = original.minHeight;
-        element.style.position = original.position;
-        element.style.top = original.top;
-        element.style.left = original.left;
-        element.style.margin = original.margin;
-        element.style.zIndex = original.zIndex;
+        element.style.minHeight = originalMinHeight;
     }
 }
         // Shares the actual generated PDF file via the device's native share sheet
