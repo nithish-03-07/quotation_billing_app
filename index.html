@@ -1250,7 +1250,10 @@ function amountInWords(total) {
                 document.getElementById('prev-extra-row').classList.add('hidden');
             }
 
-            document.getElementById('prev-amount-words').innerText = amountInWords(grandTotal);
+            document.getElementById('prev-grand-total').innerText = "₹" + grandTotal.toFixed(2);
+
+const wordsEl = document.getElementById('prev-amount-words');
+if (wordsEl) wordsEl.innerText = amountInWords(grandTotal);
         }
 
         function getBillPayload() {
