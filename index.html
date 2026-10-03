@@ -1281,69 +1281,67 @@ const headCols = `
         // the sheet shrink-wrap to its actual content height - the PDF then uses
         // exactly one page, and only spills onto more pages if the rows
         // genuinely don't fit on one.
-        async function generatePDF(returnBlob = false) {
+       async function generatePDF(returnBlob = false) {
     saveCurrentBill();
 
-    const source  = document.getElementById('invoice-preview-container');
+    const element = document.getElementById('invoice-preview-container');
     const billNo  = document.getElementById('bill-no').value || 'Bill';
     const opt     = getPdfOptions(billNo);
 
-    // 1. Build an off-screen copy at fixed A4 width
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;z-index:-1;';
+    const originalMinHeight = element.style.minHeight;
+    element.style.minHeight = '0';
 
-    const clone = source.cloneNode(true);
-    clone.removeAttribute('id');
-    clone.style.cssText = 'width:794px;min-height:0;margin:0;box-shadow:none;border:none;border-radius:0;';
-
-    // 2. Remove buttons / delete icons
-    clone.querySelectorAll('.no-print').forEach(e => e.remove());
-
-    // 3. Replace inputs/textareas with plain wrapping text
-    clone.querySelectorAll('textarea, input').forEach(el => {
-        const div = document.createElement('div');
-        div.textContent = el.value;
-        div.className = el.className;
-        div.style.cssText = 'white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;width:100%;height:auto;min-height:1em;';
-        el.replaceWith(div);
-    });
-
-    // 4. Keep every cell top-aligned and wrapped inside its column
-    clone.querySelectorAll('td, th').forEach(c => {
-        c.style.verticalAlign = 'top';
-        c.style.overflowWrap = 'anywhere';
-        c.style.wordBreak = 'break-word';
-    });
-    clone.querySelectorAll('table').forEach(t => {
-        t.style.tableLayout = 'fixed';
-        t.style.width = '100%';
-    });
-
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
-
-    // let the browser finish layout before capture
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    // 5. One tall page that matches the content exactly
-    opt.html2canvas = { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: 794 };
-    opt.jsPDF.format = [8.27, (clone.scrollHeight / 96) + 0.3];
+    const heightIn = (element.scrollHeight / 96) + 0.5;
+    opt.jsPDF.format = [8.27, heightIn];
     delete opt.pagebreak;
+
+    opt.html2canvas = {
+        scale: 2,
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0,
+        ignoreElements: (el) => el.classList && el.classList.contains('no-print'),
+        onclone: (doc) => {
+            const root = doc.getElementById('invoice-preview-container');
+            if (!root) return;
+
+            // fixed A4 width inside the capture only
+            root.style.width = '794px';
+            root.style.minHeight = '0';
+
+            // inputs/textareas -> plain wrapping text
+            root.querySelectorAll('textarea, input').forEach(el => {
+                const div = doc.createElement('div');
+                div.textContent = el.value;
+                div.className = el.className;
+                div.style.cssText = 'white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;width:100%;height:auto;min-height:1em;';
+                el.parentNode.replaceChild(div, el);
+            });
+
+            // keep text inside its own column, in every table
+            root.querySelectorAll('table').forEach(t => {
+                t.style.tableLayout = 'fixed';
+                t.style.width = '100%';
+            });
+            root.querySelectorAll('td, th').forEach(c => {
+                c.style.verticalAlign = 'top';
+                c.style.overflowWrap = 'anywhere';
+                c.style.wordBreak = 'break-word';
+                c.style.overflow = 'hidden';
+            });
+        }
+    };
 
     try {
         if (returnBlob) {
-            return await html2pdf().set(opt).from(clone).outputPdf('blob');
+            return await html2pdf().set(opt).from(element).outputPdf('blob');
         }
         showToast("Generating PDF download...");
-        return await html2pdf().set(opt).from(clone).save();
+        return await html2pdf().set(opt).from(element).save();
     } finally {
-        wrapper.remove();
+        element.style.minHeight = originalMinHeight;
     }
 }
-        // Shares the actual generated PDF file via the device's native share sheet
-        // (so the user can pick WhatsApp and send the file itself, not just text).
-        // Falls back to downloading the PDF + opening a pre-filled WhatsApp chat
-        // on browsers/devices that don't support sharing files (mostly desktop).
         async function shareWhatsApp() {
             const custName = document.getElementById('cust-name').value || 'Customer';
             const billNo = document.getElementById('bill-no').value;
