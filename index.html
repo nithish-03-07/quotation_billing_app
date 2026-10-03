@@ -1281,7 +1281,7 @@ const headCols = `
         // the sheet shrink-wrap to its actual content height - the PDF then uses
         // exactly one page, and only spills onto more pages if the rows
         // genuinely don't fit on one.
-       async function generatePDF(returnBlob = false) {
+      async function generatePDF(returnBlob = false) {
     saveCurrentBill();
 
     const element = document.getElementById('invoice-preview-container');
@@ -1291,45 +1291,35 @@ const headCols = `
     const originalMinHeight = element.style.minHeight;
     element.style.minHeight = '0';
 
-    const heightIn = (element.scrollHeight / 96) + 0.5;
-    opt.jsPDF.format = [8.27, heightIn];
-    delete opt.pagebreak;
+    // 1. Swap inputs/textareas for plain wrapping text in the live invoice
+    element.querySelectorAll('textarea, input').forEach(el => {
+        const div = document.createElement('div');
+        div.textContent = el.value;
+        div.className = el.className.replace('auto-grow', '');
+        div.style.cssText = 'white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;width:100%;height:auto;min-height:1em;';
+        el.replaceWith(div);
+    });
+    element.querySelectorAll('td, th').forEach(c => {
+        c.style.verticalAlign = 'top';
+    });
+    element.querySelectorAll('table').forEach(t => {
+        t.style.tableLayout = 'fixed';
+        t.style.width = '100%';
+    });
 
+    // let the browser finish layout before measuring
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    // 2. One page exactly as tall as the content
+    opt.jsPDF.format = [8.27, (element.scrollHeight / 96) + 0.5];
+    delete opt.pagebreak;
     opt.html2canvas = {
         scale: 2,
         useCORS: true,
         scrollX: 0,
         scrollY: 0,
-        ignoreElements: (el) => el.classList && el.classList.contains('no-print'),
-        onclone: (doc) => {
-            const root = doc.getElementById('invoice-preview-container');
-            if (!root) return;
-
-            // fixed A4 width inside the capture only
-            root.style.width = '794px';
-            root.style.minHeight = '0';
-
-            // inputs/textareas -> plain wrapping text
-            root.querySelectorAll('textarea, input').forEach(el => {
-                const div = doc.createElement('div');
-                div.textContent = el.value;
-                div.className = el.className;
-                div.style.cssText = 'white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;width:100%;height:auto;min-height:1em;';
-                el.parentNode.replaceChild(div, el);
-            });
-
-            // keep text inside its own column, in every table
-            root.querySelectorAll('table').forEach(t => {
-                t.style.tableLayout = 'fixed';
-                t.style.width = '100%';
-            });
-            root.querySelectorAll('td, th').forEach(c => {
-                c.style.verticalAlign = 'top';
-                c.style.overflowWrap = 'anywhere';
-                c.style.wordBreak = 'break-word';
-                c.style.overflow = 'hidden';
-            });
-        }
+        windowWidth: document.documentElement.scrollWidth,
+        ignoreElements: (el) => el.classList && el.classList.contains('no-print')
     };
 
     try {
@@ -1339,7 +1329,9 @@ const headCols = `
         showToast("Generating PDF download...");
         return await html2pdf().set(opt).from(element).save();
     } finally {
+        // 3. Rebuild the editable preview (puts inputs/textareas back)
         element.style.minHeight = originalMinHeight;
+        renderInvoicePreview();
     }
 }
         async function shareWhatsApp() {
