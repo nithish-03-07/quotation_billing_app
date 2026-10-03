@@ -1283,27 +1283,61 @@ const headCols = `
         // genuinely don't fit on one.
         async function generatePDF(returnBlob = false) {
     saveCurrentBill();
-    const element = document.getElementById('invoice-preview-container');
-    const billNo = document.getElementById('bill-no').value || 'Bill';
-    const opt = getPdfOptions(billNo);
 
-    const originalMinHeight = element.style.minHeight;
-    element.style.minHeight = '0';
+    const source  = document.getElementById('invoice-preview-container');
+    const billNo  = document.getElementById('bill-no').value || 'Bill';
+    const opt     = getPdfOptions(billNo);
 
-    // Measure actual content height and build a custom page size
-    // exactly that tall, so nothing splits or pushes to a 2nd page.
-            const widthIn = 8.27; // A4 width in inches
-    const contentHeightIn = (element.scrollHeight / 96) + 0.5; // small safety buffer only
-    opt.jsPDF.format = [widthIn, contentHeightIn];
-    delete opt.pagebreak; // no page breaks needed on a single long page
+    // 1. Build an off-screen copy at fixed A4 width
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;z-index:-1;';
+
+    const clone = source.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.style.cssText = 'width:794px;min-height:0;margin:0;box-shadow:none;border:none;border-radius:0;';
+
+    // 2. Remove buttons / delete icons
+    clone.querySelectorAll('.no-print').forEach(e => e.remove());
+
+    // 3. Replace inputs/textareas with plain wrapping text
+    clone.querySelectorAll('textarea, input').forEach(el => {
+        const div = document.createElement('div');
+        div.textContent = el.value;
+        div.className = el.className;
+        div.style.cssText = 'white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;width:100%;height:auto;min-height:1em;';
+        el.replaceWith(div);
+    });
+
+    // 4. Keep every cell top-aligned and wrapped inside its column
+    clone.querySelectorAll('td, th').forEach(c => {
+        c.style.verticalAlign = 'top';
+        c.style.overflowWrap = 'anywhere';
+        c.style.wordBreak = 'break-word';
+    });
+    clone.querySelectorAll('table').forEach(t => {
+        t.style.tableLayout = 'fixed';
+        t.style.width = '100%';
+    });
+
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    // let the browser finish layout before capture
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    // 5. One tall page that matches the content exactly
+    opt.html2canvas = { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: 794 };
+    opt.jsPDF.format = [8.27, (clone.scrollHeight / 96) + 0.3];
+    delete opt.pagebreak;
+
     try {
         if (returnBlob) {
-            return await html2pdf().set(opt).from(element).outputPdf('blob');
+            return await html2pdf().set(opt).from(clone).outputPdf('blob');
         }
         showToast("Generating PDF download...");
-        return await html2pdf().set(opt).from(element).save();
+        return await html2pdf().set(opt).from(clone).save();
     } finally {
-        element.style.minHeight = originalMinHeight;
+        wrapper.remove();
     }
 }
         // Shares the actual generated PDF file via the device's native share sheet
